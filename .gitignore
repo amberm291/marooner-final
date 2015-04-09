@@ -13,10 +13,4 @@ output.time.txt
 *.html~
 *.npy
 *.log
-pythonClasses/api.py
-pythonClasses/thumbnails
-pythonClasses/inputUppers
-pythonClasses/debug
-pythonClasses/template
-pythonClasses/static
-package/debug
+static/*

@@ -17,13 +17,13 @@ class lowerFit:
 		for i in xrange((2*self.userImg.shape[0])/3,0,-1):
 			count = 0
 			for j in xrange(1, self.userImg.shape[1]):
-				if grayUser[i][j-1] != grayUser[0][0] and grayUser[i][j] == grayUser[0][0]:
+				if grayUser[i][j-1] != 0 and grayUser[i][j] == 0:
 					count += 1
 			j = grayUser.shape[1]
-			if grayUser[i][j-1] != grayUser[0][0]:
+			if grayUser[i][j-1] != 0:
 				count += 1
 			if count == 1:
-				self.userLine = i
+				self.userLine = i+1
 				break
 
 		grayCat = cv2.cvtColor(self.catImg,cv2.COLOR_BGR2GRAY)
@@ -36,10 +36,9 @@ class lowerFit:
 			if grayCat[i][j-1] != grayCat[0][0]:
 				count += 1
 			if count == 1:
-				self.catLine = i
+				self.catLine = i+1
 				break
 
-		print self.userLine, self.catLine
 
 	def resizeCat(self):
 		oldLen = self.catImg.shape[0]
@@ -48,13 +47,11 @@ class lowerFit:
 
 		diff = abs(userLine - catLine)
 		self.vRatio += float(diff)/userLine
-		print self.vRatio, self.hRatio
 
 		self.catImg = cv2.resize(self.catImg,(int(self.hRatio*self.userImg.shape[1]),int(self.vRatio*self.userImg.shape[0])),interpolation=cv2.INTER_NEAREST)
-		cv2.imwrite('debug/resizedCat.png',self.catImg)
+		#cv2.imwrite('debug/resizedCat.png',self.catImg)
 		self.catLine *= float(self.catImg.shape[0])/oldLen
 		self.catLine = int(self.catLine)
-		print self.catLine
 
 	def fit(self):
 		startUser = [0]*self.userImg.shape[0]

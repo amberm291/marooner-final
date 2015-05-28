@@ -8,13 +8,41 @@ import cv2
 import numpy as np
 import pickle
 import hashlib
-#import mysql.connector
+import mysql.connector
 import subprocess
 from source.user import userPreprocess
 from source.fit import userFit
-
+from source.lower import lowerFit
+import os, shutil
 
 app = Flask(__name__)
+
+def removeDir(userId):
+    folder = '../users/' + userId + '/'
+    for the_file in os.listdir(folder):
+        file_path = os.path.join(folder, the_file)
+        try:
+            if os.path.isfile(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path): shutil.rmtree(file_path)
+        except Exception, e:
+            print e
+
+@app.route("/authenticate",methods=['POST'])
+def auth():
+    keyDict = request.get_json()
+    keys = pickle.load(open('keys.p','rb'))
+    key = str(keyDict['key'])
+    if key in keys:
+        keys.remove(key)
+        pickle.dump(keys,open('keys.p','wb'))
+        string = "OK"
+    else:
+        string = "error"
+    result = {}
+    result['status'] = string
+    resp = Response(json.dumps(result),status=200, mimetype='application/json')
+    return resp
 
 @app.route("/login", methods=['POST'])
 def login():
@@ -32,7 +60,8 @@ def login():
         cursor = cnx.cursor()
         addUser = "INSERT INTO Users VALUES(%s,%s,%s);"
         cursor.execute(addUser,(keyDict['userName'],userId,hashedString))
-        subprocess.call(['mkdir','../../users/'+hashedString])
+        subprocess.call(['mkdir','../users/' + hashedString])
+        subprocess.call(['mkdir','../users/' + hashedString +'/debug'])
         cnx.commit()
         cursor.close()
         cnx.close()
@@ -50,9 +79,10 @@ def imageUpload():
     keyDict = request.get_json()
     userId = hashlib.sha224(keyDict['userId']).hexdigest() 
     img = keyDict['image']
-    with open('../../users/' + userId + '/userImg.png','wb') as imgfile:
+    removeDir(userId)
+    with open('../users/' + userId + '/userImg.png','wb') as imgfile:
         imgfile.write(base64.b64decode(img))
-    subprocess.call(['mkdir','../../users/' + userId +'/debug'])
+    subprocess.call(['mkdir','../users/' + userId +'/debug'])
     resp = Response(status=200, mimetype='application/json')
     return resp
 
@@ -62,7 +92,7 @@ def setMask():
     bgdmodel = np.zeros((1,65),np.float64)
     fgdmodel = np.zeros((1,65),np.float64) 
     userId = hashlib.sha224(keyDict['userId']).hexdigest() 
-    userImg = cv2.imread('../../users/' + userId + '/userImg.png')
+    userImg = cv2.imread('../users/' + userId + '/userImg.png')
     upperOrLower = keyDict['flag']
     if 'topX' in keyDict.keys():
         topX = int(keyDict['topX'])
@@ -72,12 +102,12 @@ def setMask():
         rect = (topX,topY,width,height)
         mask = np.zeros(userImg.shape[:2],dtype = np.uint8)
         cv2.grabCut(userImg,mask,rect,bgdmodel,fgdmodel,10,cv2.GC_INIT_WITH_RECT)
-        np.save('../../users/' + userId + '/mask' + upperOrLower,mask)
-        pickle.dump(rect,open('../../users/' + userId + '/userRect' + upperOrLower + '.p','wb'))
+        np.save('../users/' + userId + '/mask' + upperOrLower,mask)
+        pickle.dump(rect,open('../users/' + userId + '/userRect' + upperOrLower + '.p','wb'))
     else:
-        rect = pickle.load(open('../../users/' + userId + '/userRect' + upperOrLower + '.p','rb'))
+        rect = pickle.load(open('../users/' + userId + '/userRect' + upperOrLower + '.p','rb'))
         topX, topY, width, height = rect
-        mask = np.load('../../users/' + userId + '/mask' + upperOrLower + '.npy')
+        mask = np.load('../users/' + userId + '/mask' + upperOrLower + '.npy')
         
     
     fgPoints = []
@@ -99,12 +129,12 @@ def setMask():
     cv2.grabCut(userImg,mask,rect,bgdmodel,fgdmodel,10,cv2.GC_INIT_WITH_MASK)
     mask2 = np.where((mask==2)|(mask==0),0,1).astype('uint8')
     output = userImg*mask2[:,:,np.newaxis]
-    cv2.imwrite('../../users/' + userId +'/grabcutOutput' + upperOrLower+ '.png',output)
-    cv2.imwrite('../../users/' + userId +'/grabcutOutput' + upperOrLower+ '.jpg',output)
-    np.save('../../users/' + userId + '/mask' + upperOrLower,mask)
-    encodeImg = base64.b64encode(open('../../users/' + userId +'/grabcutOutput' + upperOrLower + '.jpg').read())
+    cv2.imwrite('../users/' + userId +'/grabcutOutput' + upperOrLower+ '.png',output)
+    np.save('../users/' + userId + '/mask' + upperOrLower,mask)
+    encodeImg = base64.b64encode(open('../users/' + userId +'/grabcutOutput' + upperOrLower + '.png').read())
     result = {}
     result['img'] = encodeImg
+    result['status'] = 'OK'
     resp = Response(json.dumps(result),status=200, mimetype='application/json')
     return resp
 
@@ -112,20 +142,20 @@ def setMask():
 def preprocess():
     keyDict = request.get_json()
     userId = hashlib.sha224(keyDict['userId']).hexdigest()
-    grabcutOutput = cv2.imread('../../users/' + userId +'/grabcutOutputupper.png') 
+    grabcutOutput = cv2.imread('../users/' + userId +'/grabcutOutputupper.png') 
     processInst = userPreprocess(grabcutOutput)
     processInst.cropImg()
     processOut = processInst.removeTurds()
-    cv2.imwrite('../../users/' + userId + '/processOutupper.png',processOut)
+    cv2.imwrite('../users/' + userId + '/processOutupper.png',processOut)
     processInst.segImage(processOut)
     LU, RU = processInst.getSegLines()
     leftArmUser = processInst.armSegment(processOut,'left')
-    cv2.imwrite('../../users/' + userId + '/leftArmUser.png',leftArmUser)
+    cv2.imwrite('../users/' + userId + '/leftArmUser.png',leftArmUser)
     rightArmUser = processInst.armSegment(processOut,'right')
-    cv2.imwrite('../../users/' + userId + '/rightArmUser.png',rightArmUser)
+    cv2.imwrite('../users/' + userId + '/rightArmUser.png',rightArmUser)
     segLines = (LU,RU)
-    pickle.dump(segLines,open('../../users/' + userId + '/segLines.p','wb'))
-    pickle.dump(processInst.returnUserBox(),open('../../users/' + userId + '/userBox.p','wb'))
+    pickle.dump(segLines,open('../users/' + userId + '/segLines.p','wb'))
+    pickle.dump(processInst.returnUserBox(),open('../users/' + userId + '/userBox.p','wb'))
     resp = Response(status=200, mimetype='application/json')
     return resp
 
@@ -134,33 +164,38 @@ def fit():
     keyDict = request.get_json()
     userId = hashlib.sha224(keyDict['userId']).hexdigest()
     catId = keyDict['catId']
-    processOut = cv2.imread('../../users/' + userId + '/processOutupper.png')
-    cropFlood = cv2.imread('../../catalogue/upper/image' + catId + '/cropFloodOut.png')
-    LU,RU = pickle.load(open('../../users/' + userId + '/segLines.p'))
-    LC,RC = pickle.load(open('../../catalogue/upper/image' + catId + '/segLines.p'))
-    leftArmUser = cv2.imread('../../users/' + userId + '/leftArmUser.png')
-    rightArmUser = cv2.imread('../../users/' + userId + '/rightArmUser.png')
-    leftArmCat = cv2.imread('../../catalogue/upper/image' + catId + '/leftArmCat.png')
-    rightArmCat = cv2.imread('../../catalogue/upper/image' + catId + '/rightArmCat.png')
-    userBox = pickle.load(open('../../users/' + userId + '/userBox.p'))
+    processOut = cv2.imread('../users/' + userId + '/processOutupper.png')
+    if processOut is None:
+        result = {}
+        result['status'] = 'Upload your image first'
+        resp = Response(json.dumps(result),status=200, mimetype='application/json')
+        return resp
+    cropFlood = cv2.imread('../catalogue/upper/image' + catId + '/cropFloodOut.png')
+    LU,RU = pickle.load(open('../users/' + userId + '/segLines.p'))
+    LC,RC = pickle.load(open('../catalogue/upper/image' + catId + '/segLines.p'))
+    leftArmUser = cv2.imread('../users/' + userId + '/leftArmUser.png')
+    rightArmUser = cv2.imread('../users/' + userId + '/rightArmUser.png')
+    leftArmCat = cv2.imread('../catalogue/upper/image' + catId + '/leftArmCat.png')
+    rightArmCat = cv2.imread('../catalogue/upper/image' + catId + '/rightArmCat.png')
+    userBox = pickle.load(open('../users/' + userId + '/userBox.p'))
     fitInst = userFit(processOut,cropFlood)
     fitInst.setSegLines(LC,RC,LU,RU)
     colorUserOut = fitInst.colorUser()
-    cv2.imwrite('../../users/' + userId + '/debug/colorUserOut.png',colorUserOut)
+    cv2.imwrite('../users/' + userId + '/debug/colorUserOut.png',colorUserOut)
     fitInst.setUserArm(leftArmUser,rightArmUser)
     fitInst.setCatArm(leftArmCat,rightArmCat)
     fitLeft, fitRight = fitInst.sleeveFit()
-    cv2.imwrite('../../users/' + userId + '/debug/fitLeft.png',fitLeft)
-    cv2.imwrite('../../users/' + userId + '/debug/fitRight.png',fitRight)
+    cv2.imwrite('../users/' + userId + '/debug/fitLeft.png',fitLeft)
+    cv2.imwrite('../users/' + userId + '/debug/fitRight.png',fitRight)
     bodyFitOut = fitInst.bodyFit(colorUserOut)
-    cv2.imwrite('../../users/' + userId + '/debug/bodyFitOut.png',bodyFitOut)
+    cv2.imwrite('../users/' + userId + '/debug/bodyFitOut.png',bodyFitOut)
     finalFit = fitInst.finalFit(bodyFitOut,fitLeft,fitRight)
-    cv2.imwrite('../../users/' + userId + '/debug/finalFit.png',finalFit)
+    cv2.imwrite('../users/' + userId + '/debug/finalFit.png',finalFit)
     fitInst.setUserBox(userBox)
-    userImg = cv2.imread('../../users/' + userId + '/userImg.png')
+    userImg = cv2.imread('../users/' + userId + '/userImg.png')
     output = fitInst.fittingOntoUser(finalFit,userImg)
-    cv2.imwrite('../../users/' + userId + '/fittingOntoUser.jpg',output)
-    encodeImg = base64.b64encode(open('../../users/' + userId +'/fittingOntoUser.jpg').read())
+    cv2.imwrite('../users/' + userId + '/fittingOntoUser.jpg',output)
+    encodeImg = base64.b64encode(open('../users/' + userId +'/fittingOntoUser.jpg').read())
     result = {}
     result['img'] = encodeImg
     resp = Response(json.dumps(result),status=200, mimetype='application/json')
@@ -170,37 +205,42 @@ def fit():
 def lowProcess():
     keyDict = request.get_json()
     userId = hashlib.sha224(keyDict['userId']).hexdigest()
-    grabcutOutput = cv2.imread('../../users/' + userId +'/grabcutOutputlower.png') 
+    grabcutOutput = cv2.imread('../users/' + userId +'/grabcutOutputlower.png') 
     processInst = userPreprocess(grabcutOutput)
     processInst.cropImg()
     processOut = processInst.removeTurds()
-    cv2.imwrite('../../users/' + userId + '/processOutLower.png',processOut)
-    pickle.dump(processInst.returnUserBox(),open('../../users/' + userId + '/userLowBox.p','wb'))
+    cv2.imwrite('../users/' + userId + '/processOutLower.png',processOut)
+    pickle.dump(processInst.returnUserBox(),open('../users/' + userId + '/userLowBox.p','wb'))
     resp = Response(status=200, mimetype='application/json')
     return resp
 
-@app.route('/lowFit',methods=['POST'])
+@app.route('/fitLow',methods=['POST'])
 def lowFit():
     keyDict = request.get_json()
     userId = hashlib.sha224(keyDict['userId']).hexdigest()
     catId = keyDict['catId']
-    processOut = cv2.imread('../../users/' + userId + '/processOutlower.png')
-    cropFlood = cv2.imread('../../catalogue/lower/image' + catId + '/cropFloodOut.png')
+    processOut = cv2.imread('../users/' + userId + '/processOutLower.png')
+    if processOut is None:
+        result = {}
+        result['status'] = 'User lowers not extracted'
+        resp = Response(json.dumps(result),status=200, mimetype='application/json')
+        return resp
+    cropFlood = cv2.imread('../catalogue/lower/image' + catId + '/cropFlood.png')
     lowInst = lowerFit(processOut,cropFlood)
     lowInst.calcLowerLine()
     lowInst.resizeCat()
     finalOut = lowInst.fit()
     fitInst = userFit(processOut,cropFlood)
-    userBox = pickle.load(open('../../users/' + userId + '/userLowBox.p'))
+    userBox = pickle.load(open('../users/' + userId + '/userLowBox.p'))
     fitInst.setUserBox(userBox)
-    userImg = cv2.imread('../../users/' + userId + '/userImg.png')
-    output = fitInst.fittingOntoUser(finalFit,userImg)
-    cv2.imwrite('../../users/' + userId + '/fittingOntoUser.jpg',output)
-    encodeImg = base64.b64encode(open('../../users/' + userId +'/fittingOntoUser.jpg').read())
+    userImg = cv2.imread('../users/' + userId + '/userImg.png')
+    output = fitInst.fittingOntoUser(finalOut,userImg)
+    cv2.imwrite('../users/' + userId + '/fittingOntoUser.jpg',output)
+    encodeImg = base64.b64encode(open('../users/' + userId +'/fittingOntoUser.jpg').read())
     result = {}
     result['img'] = encodeImg
     resp = Response(json.dumps(result),status=200, mimetype='application/json')
     return resp
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0',port=8000,debug=True)
+    app.run(host='0.0.0.0',port=8000,debug=True,threaded=True)

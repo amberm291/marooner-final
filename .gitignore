@@ -4,7 +4,6 @@ time.txt
 output.time.txt
 *.txt
 *.pyc
-*.jpg
 *.html
 *.css
 *.js

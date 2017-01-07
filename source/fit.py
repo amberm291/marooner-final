@@ -114,7 +114,7 @@ class userFit(userPreprocess,catPreprocess):
 		self.rightCatLine *= float(self.catImg.shape[1])/float(oldLen)
 		self.rightCatLine = int(self.rightCatLine)
 		#print self.leftCatLine,self.rightCatLine,self.leftUserLine,self.rightUserLine
-		cv2.imwrite('debug/resizedCatImg.jpg',self.catImg)
+		#cv2.imwrite('debug/resizedCatImg.jpg',self.catImg)
 		#return self.catImg
 
 	def setSegLines(self,leftCat,rightCat,leftUser,rightUser):
@@ -452,16 +452,16 @@ class userFit(userPreprocess,catPreprocess):
 		leftCatRot,leftCatX,leftCatY,leftCatTheta = self.rotateNSave(leftCat,'left')
 		rightCatRot,rightCatX,rightCatY,rightCatTheta = self.rotateNSave(rightCat,'right')
 
-		cv2.imwrite('debug/leftUserRot.jpg',leftUserRot)
-		cv2.imwrite('debug/rightUserRot.jpg',rightUserRot)
-		cv2.imwrite('debug/leftCatRot.jpg',leftCatRot)
-		cv2.imwrite('debug/rightCatRot.jpg',rightCatRot)
+		#cv2.imwrite('debug/leftUserRot.jpg',leftUserRot)
+		#cv2.imwrite('debug/rightUserRot.jpg',rightUserRot)
+		#cv2.imwrite('debug/leftCatRot.jpg',leftCatRot)
+		#cv2.imwrite('debug/rightCatRot.jpg',rightCatRot)
 
 		leftUserFit = self.leftFit(leftUserRot,leftCatRot)
 		rightUserFit = self.rightFit(rightUserRot,rightCatRot)
 
-		cv2.imwrite('debug/leftUserFit.jpg',leftUserFit)
-		cv2.imwrite('debug/rightUserFit.jpg',rightUserFit	)
+		#cv2.imwrite('debug/leftUserFit.jpg',leftUserFit)
+		#cv2.imwrite('debug/rightUserFit.jpg',rightUserFit	)
 
 		finalLeft = self.rotateImage(leftUserFit,-leftUserTheta,leftUserX,leftUserY)
 		finalRight = self.rotateImage(rightUserFit,-rightUserTheta,rightUserX,rightUserY)

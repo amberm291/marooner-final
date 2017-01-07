@@ -10,8 +10,8 @@ class catPreprocess:
 		self.leftSegLine = 0
 		self.rightSegLine = 0
 
-	def edgeDetect(self):
-		edgeImg = cv2.Canny(self.img,10,175)
+	def edgeDetect(self,threshold=175):
+		edgeImg = cv2.Canny(self.img,10,threshold)
 		kernel = np.ones((3,3),np.uint8)
 		grayDilated = cv2.dilate(edgeImg,kernel)
 		kernel = np.ones((2,2),np.uint8)

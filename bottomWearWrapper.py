@@ -6,6 +6,8 @@ from source.catalogue import catPreprocess
 from source.fit import userFit
 from source.lower import lowerFit
 
+if not os.path.exists('debug/'):
+	os.makedirs('debug/')
 
 if sys.argv[3] == "1":
 	grabcutOutput = cv2.imread('debug/grabcutOutputLower.png') 

@@ -5,9 +5,11 @@ import sys
 from source.catalogue import catPreprocess
 from source.fit import userFit
 
+if not os.path.exists('debug/'):
+	os.makedirs('debug/')
 
 if sys.argv[3] == "1":
-	grabcutOutput = cv2.imread('debug/grabcutOutputUpper.png') 
+	grabcutOutput = cv2.imread('debug/grabcutOutput.png') 
 else:
 	img = cv2.imread(sys.argv[1])
 	grabInst = grabcut(img)
@@ -34,7 +36,6 @@ cv2.imwrite("debug/floodOut.png",floodOut)
 cropFlood = catInst.cropImg(floodOut)
 catInst.segImage(cropFlood)
 LC, RC = catInst.getSegLines()
-print LC,RC
 cv2.imwrite("debug/cropFloodOut.png",cropFlood)
 
 rightArmCat = catInst.armSegment(cropFlood,'right')

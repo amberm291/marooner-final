@@ -7,7 +7,7 @@ from source.fit import userFit
 
 
 if sys.argv[3] == "1":
-	grabcutOutput = cv2.imread('debug/grabcutOutputUpper.png') 
+	grabcutOutput = cv2.imread('debug/grabcutOutputLower.png') 
 else:
 	img = cv2.imread(sys.argv[1])
 	grabInst = grabcut(img)
@@ -30,7 +30,7 @@ cv2.imwrite('debug/rightArmUser.png',rightArmUser)
 catImg = cv2.imread(sys.argv[2])
 catInst = catPreprocess(catImg)
 floodOut = catInst.edgeDetect()
-cv2.imwrite("debug/floodOut.png",floodOut)
+cv2.imwrite("debug/floodOutLower.png",floodOut)
 cropFlood = catInst.cropImg(floodOut)
 catInst.segImage(cropFlood)
 LC, RC = catInst.getSegLines()
